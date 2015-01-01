@@ -54,7 +54,7 @@ int opendevice(int i)
 		return ERROR_LOCAL;
 	}
 
-	fd = open (dev_name, O_RDWR | O_NONBLOCK, 0);
+	fd = open (dev_name, O_RDWR/* | O_NONBLOCK*/, 0);
 
 	if (-1 == fd) {
 		LOGE("Cannot open '%s': %d, %s", dev_name, errno, strerror (errno));
@@ -96,7 +96,7 @@ int initdevice(void)
 
 	if (0 == xioctl (fd, VIDIOC_CROPCAP, &cropcap)) {
 		crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		crop.c = cropcap.defrect; 
+		crop.c = cropcap.defrect;
 
 		if (-1 == xioctl (fd, VIDIOC_S_CROP, &crop)) {
 			switch (errno) {
@@ -212,7 +212,7 @@ int startcapturing(void)
 	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	if (-1 == xioctl (fd, VIDIOC_STREAMON, &type))
-		return errnoexit ("VIDIOC_STREAMON");
+		return errnoexit ("VIDIOC_STREAMON");	//error19 No such device
 
 	return SUCCESS_LOCAL;
 }
@@ -244,7 +244,7 @@ int readframeonce(void)
 			return ERROR_LOCAL;
 
 		}
-
+		//fd select return
 		if (readframe ()==1)
 			break;
 
@@ -270,7 +270,7 @@ int readframe(void)
 
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	buf.memory = V4L2_MEMORY_MMAP;
-
+	// dequeue buffer
 	if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
 		switch (errno) {
 			case EAGAIN:
@@ -280,7 +280,7 @@ int readframe(void)
 				return errnoexit ("VIDIOC_DQBUF");
 		}
 	}
-
+	/* assert - abort the program if assertion is false */
 	assert (buf.index < n_buffers);
 
 	processimage (buffers[buf.index].start);
@@ -328,7 +328,29 @@ int closedevice(void)
 	return SUCCESS_LOCAL;
 }
 
-
+void jpegtoABGRY(unsigned char *src,int length)
+{
+	SkBitmap*           bitmap;
+	SkBitmap::Config prefConfig = SkBitmap::kNo_Config;
+	SkImageDecoder::Mode mode = SkImageDecoder::kDecodePixels_Mode;
+	bool doDither = true;
+	bool isMutable = false;
+	SkStream* stream = new SkMemoryStream(src, length, true);
+	SkAutoUnref aur(stream);
+	//doDecode(proc_env, stream, NULL, NULL, false);
+	SkImageDecoder* decoder = SkImageDecoder::Factory(stream);
+    if (NULL == decoder) {
+        return nullObjectReturn("SkImageDecoder::Factory returned null");
+    }
+    decoder->setSampleSize(1);
+    decoder->setDitherImage(true);
+    decoder->setPreferQualityOverSpeed(false);
+    bitmap = new SkBitmap;
+    if (!decoder->decode(stream, bitmap, prefConfig, mode, false)) {
+        return nullObjectReturn("decoder->decode returned false");
+    }d
+    bitmap->copyPixelsTo(&rgb[0],IMG_WIDTH*IMG_HEIGHT,IMG_WIDTH*IMG_HEIGHT*sizeof(int));///////////..111111111111111111111111111111111111
+}
 
 void yuyv422toABGRY(unsigned char *src)
 {
@@ -432,6 +454,19 @@ Java_com_camera_simplewebcam_CameraPreview_pixeltobmp( JNIEnv* env,jobject thiz,
 		LOGE("Bitmap format is not RGBA_8888 !");
 		return;
 	}
+	/** 来自 ndk : include/android/bitmap.h
+	 59  * Given a java bitmap object, attempt to lock the pixel address.
+	 60  * Locking will ensure that the memory for the pixels will not move
+	 61  * until the unlockPixels call, and ensure that, if the pixels had been
+	 62  * previously purged, they will have been restored.
+	 63  *
+	 64  * If this call succeeds, it must be balanced by a call to
+	 65  * AndroidBitmap_unlockPixels, after which time the address of the pixels should
+	 66  * no longer be used.
+	 67  *
+	 68  * If this succeeds, *addrPtr will be set to the pixel address. If the call
+	 69  * fails, addrPtr will be ignored.
+	 70  */
 
 	if ((ret = AndroidBitmap_lockPixels(env, bitmap, &pixels)) < 0) {
 		LOGE("AndroidBitmap_lockPixels() failed ! error=%d", ret);
@@ -498,7 +533,7 @@ Java_com_camera_simplewebcam_CameraPreview_prepareCameraWithBase( JNIEnv* env,jo
 void 
 Java_com_camera_simplewebcam_CameraPreview_processCamera( JNIEnv* env,
 										jobject thiz){
-
+	proc_env = env;
 	readframeonce();
 }
 

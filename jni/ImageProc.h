@@ -58,6 +58,8 @@ int v833_tbl[256];
 int u400_tbl[256];
 int u2066_tbl[256];
 
+JNIEnv* proc_env;
+
 int errnoexit(const char *s);
 
 int xioctl(int fd, int request, void *arg);

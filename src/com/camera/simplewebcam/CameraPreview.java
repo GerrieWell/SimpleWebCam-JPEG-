@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 
@@ -26,7 +27,7 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, Runna
 	// so users must use /dev/video[4-].
 	// In such a case, try cameraId=0 and cameraBase=4
 	private int cameraId=0;
-	private int cameraBase=0;
+	private int cameraBase=13;
 	
 	// This definition also exists in ImageProc.h.
 	// Webcam must support the resolution 640x480 with YUYV format. 
@@ -93,11 +94,12 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, Runna
         		}
         	}
         	
-        	// obtaining a camera image (pixel data are stored in an array in JNI).
+        	// obtaining a camera image (pixel data are stored in an array in JNI). And ture yuv420 to rgb pixels
         	processCamera();
         	// camera image to bmp
+        	//BitmapFactory.decodeByteArray(data, offset, length)
         	pixeltobmp(bmp);
-        	
+        	// get Canvas
             Canvas canvas = getHolder().lockCanvas();
             if (canvas != null)
             {
