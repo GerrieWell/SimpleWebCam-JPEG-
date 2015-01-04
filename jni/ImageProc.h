@@ -23,6 +23,11 @@
 
 #include <linux/videodev2.h>
 #include <linux/usbdevice_fs.h>
+//#include <frameworks/base/core/jni/android/graphics/Utils.h>
+
+#include "SkBitmap.h"
+#include "SkStream.h"
+#include "SkImageDecoder.h"
 
 #define  LOG_TAG    "WebCam"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
@@ -73,12 +78,13 @@ int startcapturing(void);
 int readframeonce(void);
 int readframe(void);
 void processimage (const void *p);
-
+void processimage (const void *p,size_t length);
 int stopcapturing(void);
 int uninitdevice(void);
 int closedevice(void);
 
 void yuyv422toABGRY(unsigned char *src);
+void jpegtoABGRY(unsigned char *src,int length);
 
 jint Java_com_camera_simplewebcam_CameraPreview_prepareCamera( JNIEnv* env,jobject thiz, jint videoid);
 jint Java_com_camera_simplewebcam_CameraPreview_prepareCameraWithBase( JNIEnv* env,jobject thiz, jint videoid, jint videobase);
