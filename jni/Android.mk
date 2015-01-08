@@ -29,10 +29,11 @@ $(warning $(path-to-system-libs))
 LOCAL_MODULE    := ImageProc
 LOCAL_SRC_FILES := ImageProc.cpp
 LOCAL_LDFLAGS += -L$(LOCAL_PATH)/lib/ -L $(path-to-system-libs)
-LOCAL_LDLIBS  += -lcutils
+#LOCAL_LDLIBS  += -lcutils
 #LOCAL_LDLIBS    := -llog -ljnigraphics -lskiagl  libskiagl
-LOCAL_SHARED_LIBRARIES += liblog libjnigraphics libskia
+LOCAL_SHARED_LIBRARIES += libcutils liblog libjnigraphics libskia
 
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
+#include $(BUILD_EXECUTABLE)

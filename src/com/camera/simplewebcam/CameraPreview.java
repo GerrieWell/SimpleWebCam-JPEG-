@@ -1,5 +1,7 @@
 package com.camera.simplewebcam;
 
+import java.io.IOException;
+
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -33,6 +35,7 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, Runna
 	// Webcam must support the resolution 640x480 with YUYV format. 
 	static final int IMG_WIDTH=640;
 	static final int IMG_HEIGHT=480;
+	
 
 	// The following variables are used to draw camera images.
     private int winWidth=0;
@@ -75,18 +78,19 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, Runna
 	
     @Override
     public void run() {
-        while (true && cameraExists) {
+       while (true && cameraExists) {
         	//obtaining display area to draw a large image
         	if(winWidth==0){
         		winWidth=this.getWidth();
         		winHeight=this.getHeight();
-
+        	//600 480
         		if(winWidth*3/4<=winHeight){
         			dw = 0;
         			dh = (winHeight-winWidth*3/4)/2;
         			rate = ((float)winWidth)/IMG_WIDTH;
         			rect = new Rect(dw,dh,dw+winWidth-1,dh+winWidth*3/4-1);
         		}else{
+        	//		
         			dw = (winWidth-winHeight*4/3)/2;
         			dh = 0;
         			rate = ((float)winHeight)/IMG_HEIGHT;
@@ -125,8 +129,14 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, Runna
 		// /dev/videox (x=cameraId + cameraBase) is used
 		int ret = prepareCameraWithBase(cameraId, cameraBase);
 		
-		if(ret!=-1) cameraExists = true;
-		
+		if(ret!=-1) 
+			cameraExists = true;
+		try {
+			Runtime.getRuntime().exec("chmod 777 /dev/video/"+(cameraBase+cameraId));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         mainLoop = new Thread(this);
         mainLoop.start();		
 	}

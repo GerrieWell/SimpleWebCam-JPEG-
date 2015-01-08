@@ -33,6 +33,9 @@
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
+#define DEBUGLOGL(...)	LOGI("%s:line:%d",__FUNCTION__,__LINE__)
+#define DEBUG  		LOGI
+#define dbgv(v) {DEBUG("%s \t:%08x %d",#v,v , v);}while(0)
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
 
 #define IMG_WIDTH 640
@@ -86,8 +89,10 @@ int closedevice(void);
 void yuyv422toABGRY(unsigned char *src);
 void jpegtoABGRY(unsigned char *src,int length);
 
+/*
 jint Java_com_camera_simplewebcam_CameraPreview_prepareCamera( JNIEnv* env,jobject thiz, jint videoid);
 jint Java_com_camera_simplewebcam_CameraPreview_prepareCameraWithBase( JNIEnv* env,jobject thiz, jint videoid, jint videobase);
 void Java_com_camera_simplewebcam_CameraPreview_processCamera( JNIEnv* env,jobject thiz);
 void Java_com_camera_simplewebcam_CameraPreview_stopCamera(JNIEnv* env,jobject thiz);
 void Java_com_camera_simplewebcam_CameraPreview_pixeltobmp( JNIEnv* env,jobject thiz,jobject bitmap);                                                  
+*/

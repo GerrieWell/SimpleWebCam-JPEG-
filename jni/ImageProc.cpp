@@ -1,5 +1,5 @@
 #include "ImageProc.h"
-
+#include "com_camera_simplewebcam_CameraPreview.h"
 
 int errnoexit(const char *s)
 {
@@ -19,7 +19,7 @@ int xioctl(int fd, int request, void *arg)
 }
 int checkCamerabase(void){
 	struct stat st;
-	int i;
+	int i;;
 	int start_from_4 = 1;
 	
 	/* if /dev/video[0-3] exist, camerabase=4, otherwise, camrerabase = 0 */
@@ -42,9 +42,18 @@ int checkCamerabase(void){
 int opendevice(int i)
 {
 	struct stat st;
-
+	int ret;
+	uid_t uid;
+	gid_t gid;
 	sprintf(dev_name,"/dev/video%d",i);
-
+	//@add by wei
+	ret = chmod(dev_name,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);//S_IRWXU|S_IRWXG|S_IRWXO
+	uid = getuid();
+	gid = getgid();
+	if (ret!=0){
+		LOGE("Cannot chmod '%s': %d, %s", dev_name, errno, strerror (errno));
+		LOGE("ids : uid :%d,gid:%d",uid,gid);
+	}
 	if (-1 == stat (dev_name, &st)) {
 		LOGE("Cannot identify '%s': %d, %s", dev_name, errno, strerror (errno));
 		return ERROR_LOCAL;
@@ -64,13 +73,46 @@ int opendevice(int i)
 	return SUCCESS_LOCAL;
 }
 
+static int fimc_v4l2_enum_fmt(int fp, unsigned int fmt)
+{
+    struct v4l2_fmtdesc fmtdesc;
+    int found = 0;
+	int ret=1;
+	memset(&fmtdesc,0,sizeof(fmtdesc));
+    //@wei  fmtdesc.type = V4L2_BUF_TYPE;
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    fmtdesc.index = 0;
+	// while (ioctl(fp, VIDIOC_ENUM_FMT, &fmtdesc) == 0) {
+    while (ret>= 0) {
+		ret=ioctl(fp, VIDIOC_ENUM_FMT, &fmtdesc);
+		dbgv(ret);
+		LOGI("supported format: %d",fmtdesc.pixelformat);
+        if (fmtdesc.pixelformat == fmt) {
+            LOGI("passed fmt = %#x found pixel format[%d]: %s", fmt, fmtdesc.index, fmtdesc.description);
+            found = 1;
+            break;
+        }
+
+        fmtdesc.index++;
+    }
+
+    if (!found) {
+        LOGE("unsupported pixel format");
+        return -1;
+    }
+
+    return 0;
+}
+
 int initdevice(void) 
 {
+	static int g_aiSupportedFormats[] = {V4L2_PIX_FMT_JPEG,V4L2_PIX_FMT_YUYV,V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_RGB565};
+
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
 	struct v4l2_crop crop;
 	struct v4l2_format fmt;
-	unsigned int min;
+	unsigned int min,format_index;
 
 	if (-1 == xioctl (fd, VIDIOC_QUERYCAP, &cap)) {
 		if (EINVAL == errno) {
@@ -109,27 +151,38 @@ int initdevice(void)
 		}
 	} else {
 	}
-
+	
 	CLEAR (fmt);
+	DEBUGLOGL();
+	for (format_index=0 ; 
+			format_index < sizeof(g_aiSupportedFormats)/sizeof(g_aiSupportedFormats[0]); format_index++){
+		if(fimc_v4l2_enum_fmt(fd,g_aiSupportedFormats[format_index])==0){
+			fmt.fmt.pix.pixelformat = g_aiSupportedFormats[format_index];
+			break;
+		}
+	}
 
 	fmt.type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	fmt.fmt.pix.width       = IMG_WIDTH; 
 	fmt.fmt.pix.height      = IMG_HEIGHT;
 
-	fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+	//fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
 	fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
 
 	if (-1 == xioctl (fd, VIDIOC_S_FMT, &fmt))
 		return errnoexit ("VIDIOC_S_FMT");
 
+	dbgv(fmt.fmt.pix.width);
+	dbgv(fmt.fmt.pix.height);
+#ifdef YUYVFORMAT
 	min = fmt.fmt.pix.width * 2;
 	if (fmt.fmt.pix.bytesperline < min)
 		fmt.fmt.pix.bytesperline = min;
 	min = fmt.fmt.pix.bytesperline * fmt.fmt.pix.height;
 	if (fmt.fmt.pix.sizeimage < min)
 		fmt.fmt.pix.sizeimage = min;
-
+#endif
 	return initmmap ();
 
 }
@@ -176,7 +229,7 @@ int initmmap(void)
 
 		if (-1 == xioctl (fd, VIDIOC_QUERYBUF, &buf))
 			return errnoexit ("VIDIOC_QUERYBUF");
-
+		dbgv(buf.m.offset);
 		buffers[n_buffers].length = buf.length;
 		buffers[n_buffers].start =
 		mmap (NULL ,
@@ -188,7 +241,7 @@ int initmmap(void)
 		if (MAP_FAILED == buffers[n_buffers].start)
 			return errnoexit ("mmap");
 	}
-
+	dbgv(n_buffers);
 	return SUCCESS_LOCAL;
 }
 
@@ -248,7 +301,6 @@ int readframeonce(void)
 		//fd select return
 		if (readframe ()==1)
 			break;
-
 	}
 
 	return SUCCESS_LOCAL;
@@ -288,6 +340,7 @@ int readframe(void)
 				return errnoexit ("VIDIOC_DQBUF");
 		}
 	}
+	dbgv(buf.index);
 	/* assert - abort the program if assertion is false */
 	assert (buf.index < n_buffers);
 
@@ -336,31 +389,65 @@ int closedevice(void)
 	return SUCCESS_LOCAL;
 }
 
+static int counter=0;
 void jpegtoABGRY(unsigned char *src,int length)
 {
+	
 	SkBitmap*           bitmap;
-	SkBitmap::Config prefConfig = SkBitmap::kNo_Config;
+	SkBitmap::Config prefConfig = SkBitmap::kARGB_8888_Config;
 	SkImageDecoder::Mode mode = SkImageDecoder::kDecodePixels_Mode;
-	bool doDither = true;
-	bool isMutable = false;
-	SkStream* stream = new SkMemoryStream(src, length, true);
+	bool doDither = false;
+	bool isMutable = false,ret;
+	SkMemoryStream* stream = new SkMemoryStream(src, length);
+	bitmap = new SkBitmap;
+	//SkFILEStream *stream = new SkFILEStream("/data/tmp.jpg");
 	SkAutoUnref aur(stream);
-	//doDecode(proc_env, stream, NULL, NULL, false);
+	//SkJPEGImageDecoder
+	//SkJPEGImageDecoder* decoder = new SkJPEGImageDecoder;
 	SkImageDecoder* decoder = SkImageDecoder::Factory(stream);
     if (NULL == decoder) {
         LOGE("SkImageDecoder::Factory returned null");
         return;
     }
-    decoder->setSampleSize(1);
-    decoder->setDitherImage(true);
-    decoder->setPreferQualityOverSpeed(false);
-    bitmap = new SkBitmap;
-    if (!decoder->decode(stream, bitmap, prefConfig, mode, false)) {
-        //return android::nullObjectReturn("decoder->decode returned false");
+    //decoder->setSampleSize(1);
+    decoder->setDitherImage(false);
+    //decoder->setPreferQualityOverSpeed(false);
+    SkImageDecoder::Format format = SkImageDecoder::kJPEG_Format;
+    stream->rewind();
+    ret = decoder->decode(stream, bitmap, prefConfig, mode, true);
+    //SkImageDecoder::DecodeStream(stream, bitmap, prefConfig, mode, &format);
+    if (!ret) {
+    //return android::nullObjectReturn("decoder->decode returned false");
     	LOGE("decoder->decode returned false");
     	return ;
     }
-    bitmap->copyPixelsTo(&rgb[0],IMG_WIDTH*IMG_HEIGHT,IMG_WIDTH*IMG_HEIGHT*sizeof(int));///////////..111111111111111111111111111111111111
+    //default int dstRowBytes = -1
+    DEBUG("here line %d bitmaps: values :%d\t%d",__LINE__,bitmap->getSize(),bitmap->getConfig());
+    bitmap->copyPixelsTo(&rgb[0],IMG_WIDTH*IMG_HEIGHT*sizeof(int));
+    int fd_tmp,fd_tmp_dst;
+#if 1 
+    if(++counter>5){
+    	counter = 0;
+    	DEBUGLOGL();
+    	fd_tmp = open("/data/tmp.jpg",O_RDWR|O_CREAT|O_TRUNC,777);
+    	if(fd_tmp<0){
+    		dbgv(fd_tmp);//strerror (errno)
+    		goto CONTINUE_FLAG;
+    	}
+    	fd_tmp_dst = open("/data/row.rgb",O_RDWR|O_CREAT|O_TRUNC,777);
+    	if(fd_tmp_dst<0)
+    		goto CONTINUE_FLAG;
+    	DEBUGLOGL();
+    	//write(fd_tmp,src,length);
+    	write(fd_tmp_dst,&rgb[0],IMG_WIDTH*IMG_HEIGHT*4);
+    	close(fd_tmp);
+    	close(fd_tmp_dst);
+    }
+#endif
+CONTINUE_FLAG:    
+    delete(bitmap);
+    delete(stream);
+    delete(decoder);
 }
 
 void yuyv422toABGRY(unsigned char *src)
@@ -530,13 +617,12 @@ Java_com_camera_simplewebcam_CameraPreview_prepareCamera( JNIEnv* env,jobject th
 
 
 
-jint 
+JNIEXPORT jint 
 Java_com_camera_simplewebcam_CameraPreview_prepareCameraWithBase( JNIEnv* env,jobject thiz, jint videoid, jint videobase){
 	
 		int ret;
 
 		camerabase = videobase;
-	
 		return Java_com_camera_simplewebcam_CameraPreview_prepareCamera(env,thiz,videoid);
 	
 }
@@ -563,4 +649,35 @@ Java_com_camera_simplewebcam_CameraPreview_stopCamera(JNIEnv* env,jobject thiz){
 	fd = -1;
 
 }
+/*
+ * JNI registration.
+ static JNINativeMethod gPaintSurfaceMethods[] = {
+    { "nativeSurfaceCreated", "(I)V", (void*) surfaceCreated },
+    { "nativeSurfaceChanged", "(IIII)V", (void*) surfaceChanged },
+    { "nativeSurfaceDestroyed", "(I)V", (void*) surfaceDestroyed },
+};
+ */
 
+#if 0
+EXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+
+    JNIEnv* env = NULL;
+
+    if (vm->GetEnv((void**) &env, JNI_VERSION_1_4) != JNI_OK) {
+        return -1;
+    }
+
+    jniRegisterNativeMethods(env, "com/android/sampleplugin/PaintSurface",
+                             gPaintSurfaceMethods, NELEM(gPaintSurfaceMethods));
+
+    return JNI_VERSION_1_4;
+}
+#endif
+//for test 
+//*/
+int main(int argc,unsigned char **args){
+	Java_com_camera_simplewebcam_CameraPreview_prepareCameraWithBase(NULL,NULL,13,0);
+
+	return 0;
+}
+//*/
