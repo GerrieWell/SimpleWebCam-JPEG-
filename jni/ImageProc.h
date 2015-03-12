@@ -33,8 +33,9 @@
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
-#define DEBUGLOGL(...)	LOGI("%s:line:%d",__FUNCTION__,__LINE__)
-#define DEBUG  		LOGI
+#define DEBUGLOGL(...)	printf("%s:line:%d \n",__FUNCTION__,__LINE__)
+//#define DEBUG  		LOGI
+#define DEBUG(...)
 #define dbgv(v) {DEBUG("%s \t:%08x %d",#v,v , v);}while(0)
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
 

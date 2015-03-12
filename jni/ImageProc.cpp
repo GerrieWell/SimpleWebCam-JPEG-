@@ -1,6 +1,15 @@
 #include "ImageProc.h"
 #include "com_camera_simplewebcam_CameraPreview.h"
 
+static int counter=0;
+static SkBitmap* src_bitmap;
+static SkMemoryStream* stream ;
+void init_bitmap(){
+	src_bitmap = new SkBitmap;
+	stream	= new SkMemoryStream();
+	//SkAutoUnref aur(stream);
+}
+
 int errnoexit(const char *s)
 {
 	LOGE("%s error %d, %s", s, errno, strerror (errno));
@@ -113,7 +122,7 @@ int initdevice(void)
 	struct v4l2_crop crop;
 	struct v4l2_format fmt;
 	unsigned int min,format_index;
-
+	init_bitmap();
 	if (-1 == xioctl (fd, VIDIOC_QUERYCAP, &cap)) {
 		if (EINVAL == errno) {
 			LOGE("%s is no V4L2 device", dev_name);
@@ -375,6 +384,8 @@ int uninitdevice(void)
 
 	free (buffers);
 
+    delete(src_bitmap);
+    delete(stream);
 	return SUCCESS_LOCAL;
 }
 
@@ -389,20 +400,15 @@ int closedevice(void)
 	return SUCCESS_LOCAL;
 }
 
-static int counter=0;
 void jpegtoABGRY(unsigned char *src,int length)
 {
 	
-	SkBitmap*           bitmap;
+	
 	SkBitmap::Config prefConfig = SkBitmap::kARGB_8888_Config;
-	SkImageDecoder::Mode mode = SkImageDecoder::kDecodePixels_Mode;
+	SkImageDecoder::Mode mode = SkImageDecoder::kDecodePixels_Mode;;
 	bool doDither = false;
 	bool isMutable = false,ret;
-	SkMemoryStream* stream = new SkMemoryStream(src, length);
-	bitmap = new SkBitmap;
-	//SkFILEStream *stream = new SkFILEStream("/data/tmp.jpg");
-	SkAutoUnref aur(stream);
-	//SkJPEGImageDecoder
+	stream->setMemory(src,length,false);
 	//SkJPEGImageDecoder* decoder = new SkJPEGImageDecoder;
 	SkImageDecoder* decoder = SkImageDecoder::Factory(stream);
     if (NULL == decoder) {
@@ -413,19 +419,19 @@ void jpegtoABGRY(unsigned char *src,int length)
     decoder->setDitherImage(false);
     //decoder->setPreferQualityOverSpeed(false);
     SkImageDecoder::Format format = SkImageDecoder::kJPEG_Format;
-    stream->rewind();
-    ret = decoder->decode(stream, bitmap, prefConfig, mode, true);
-    //SkImageDecoder::DecodeStream(stream, bitmap, prefConfig, mode, &format);
+    //stream->rewind();
+    ret = decoder->decode(stream, src_bitmap, prefConfig, mode, true);
+    //SkImageDecoder::DecodeStream(stream, src_bitmap, prefConfig, mode, &format);
     if (!ret) {
     //return android::nullObjectReturn("decoder->decode returned false");
     	LOGE("decoder->decode returned false");
     	return ;
     }
     //default int dstRowBytes = -1
-    DEBUG("here line %d bitmaps: values :%d\t%d",__LINE__,bitmap->getSize(),bitmap->getConfig());
-    bitmap->copyPixelsTo(&rgb[0],IMG_WIDTH*IMG_HEIGHT*sizeof(int));
+    DEBUG("here line %d bitmaps: values :%d\t%d",__LINE__,src_bitmap->getSize(),src_bitmap->getConfig());
+    src_bitmap->copyPixelsTo(&rgb[0],IMG_WIDTH*IMG_HEIGHT*sizeof(int));
     int fd_tmp,fd_tmp_dst;
-#if 1 
+#if 0
     if(++counter>5){
     	counter = 0;
     	DEBUGLOGL();
@@ -445,8 +451,6 @@ void jpegtoABGRY(unsigned char *src,int length)
     }
 #endif
 CONTINUE_FLAG:    
-    delete(bitmap);
-    delete(stream);
     delete(decoder);
 }
 
@@ -647,7 +651,6 @@ Java_com_camera_simplewebcam_CameraPreview_stopCamera(JNIEnv* env,jobject thiz){
 	if(ybuf) free(ybuf);
         
 	fd = -1;
-
 }
 /*
  * JNI registration.
@@ -674,8 +677,8 @@ EXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 }
 #endif
 //for test 
-//*/
-int main(int argc,unsigned char **args){
+/*/
+int main(int argc, char **args){
 	Java_com_camera_simplewebcam_CameraPreview_prepareCameraWithBase(NULL,NULL,13,0);
 
 	return 0;
