@@ -402,8 +402,6 @@ int closedevice(void)
 
 void jpegtoABGRY(unsigned char *src,int length)
 {
-	
-	
 	SkBitmap::Config prefConfig = SkBitmap::kARGB_8888_Config;
 	SkImageDecoder::Mode mode = SkImageDecoder::kDecodePixels_Mode;;
 	bool doDither = false;
@@ -415,41 +413,16 @@ void jpegtoABGRY(unsigned char *src,int length)
         LOGE("SkImageDecoder::Factory returned null");
         return;
     }
-    //decoder->setSampleSize(1);
     decoder->setDitherImage(false);
-    //decoder->setPreferQualityOverSpeed(false);
     SkImageDecoder::Format format = SkImageDecoder::kJPEG_Format;
-    //stream->rewind();
     ret = decoder->decode(stream, src_bitmap, prefConfig, mode, true);
-    //SkImageDecoder::DecodeStream(stream, src_bitmap, prefConfig, mode, &format);
     if (!ret) {
-    //return android::nullObjectReturn("decoder->decode returned false");
     	LOGE("decoder->decode returned false");
     	return ;
     }
-    //default int dstRowBytes = -1
     DEBUG("here line %d bitmaps: values :%d\t%d",__LINE__,src_bitmap->getSize(),src_bitmap->getConfig());
     src_bitmap->copyPixelsTo(&rgb[0],IMG_WIDTH*IMG_HEIGHT*sizeof(int));
     int fd_tmp,fd_tmp_dst;
-#if 0
-    if(++counter>5){
-    	counter = 0;
-    	DEBUGLOGL();
-    	fd_tmp = open("/data/tmp.jpg",O_RDWR|O_CREAT|O_TRUNC,777);
-    	if(fd_tmp<0){
-    		dbgv(fd_tmp);//strerror (errno)
-    		goto CONTINUE_FLAG;
-    	}
-    	fd_tmp_dst = open("/data/row.rgb",O_RDWR|O_CREAT|O_TRUNC,777);
-    	if(fd_tmp_dst<0)
-    		goto CONTINUE_FLAG;
-    	DEBUGLOGL();
-    	//write(fd_tmp,src,length);
-    	write(fd_tmp_dst,&rgb[0],IMG_WIDTH*IMG_HEIGHT*4);
-    	close(fd_tmp);
-    	close(fd_tmp_dst);
-    }
-#endif
 CONTINUE_FLAG:    
     delete(decoder);
 }
