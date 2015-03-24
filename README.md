@@ -1,3 +1,19 @@
+#功能简介
+一个从**simplewebcam**拓展来的程序.它源码不在github所以木有fork了.实现usb摄像头的preview功能.此版本添加jpeg解码显示.
+
+#TODO
+
+将来还会继续添加使用ffmpeg录像和移动侦测功能.
+
+_(:з」∠)_  但是上次那个项目说要添加至今还没commit过..
+但是如果有人star支持的话我一定不会这么拖延的!!~
+
+
+> 以下是原工程README.(其实没啥用..
+
+------------------
+
+
 Eclipse project for android to use USB Webcam.
 
 To run this application, the following conditions should be satisfied.
